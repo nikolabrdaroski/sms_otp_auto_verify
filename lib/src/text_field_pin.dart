@@ -9,15 +9,12 @@ class TextFieldPinController {
   List<FocusNode> focusNode = List();
   List<TextEditingController> textController = List();
 
-  TextFieldPinController({
-    this.focusNode,
-    this.textController,
-  });
-
   clear() {
     textController.forEach((element) {
       element.clear();
     });
+
+    focusNode[0].requestFocus();
   }
 }
 
