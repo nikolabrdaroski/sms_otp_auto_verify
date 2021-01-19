@@ -17,19 +17,19 @@ class TextFieldPin extends StatefulWidget {
   final InputBorder borderStyeAfterTextChange;
   final bool filledAfterTextChange;
 
-  TextFieldPin(
-      {Key key,
-      this.onOtpCallback,
-      this.boxSize = 46,
-      this.borderStyle,
-      this.filled = false,
-      this.filledColor = Colors.grey,
-      this.codeLength = 5,
-      this.textStyle,
-      this.margin = 16,
-      this.borderStyeAfterTextChange,
-      this.filledAfterTextChange = false})
-      : super(key: key);
+  TextFieldPin({
+    Key key,
+    this.onOtpCallback,
+    this.boxSize = 46,
+    this.borderStyle,
+    this.filled = false,
+    this.filledColor = Colors.grey,
+    this.codeLength = 5,
+    this.textStyle,
+    this.margin = 16,
+    this.borderStyeAfterTextChange,
+    this.filledAfterTextChange = false,
+  }) : super(key: key);
 
   @override
   State<StatefulWidget> createState() {
@@ -145,6 +145,12 @@ class _TextFieldPinState extends State<TextFieldPin> {
     widget.onOtpCallback(_result, isAutoFill);
   }
 
+  clear() {
+    textController.forEach((element) {
+      element.clear();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     InputBorder _border = widget.borderStyle;
@@ -188,7 +194,7 @@ class _TextFieldPinState extends State<TextFieldPin> {
                           FocusScope.of(context)
                               .requestFocus(focusNode[_nextFocus]);
                         } else {
-                          _nextFocus = (mListOtpData.length-1) - 1;
+                          _nextFocus = (mListOtpData.length - 1) - 1;
                         }
                       } else {
                         if (i >= 1) {
