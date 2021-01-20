@@ -6,15 +6,40 @@ import 'package:sms_otp_auto_verify/src/sms_retrieved.dart';
 ///your listData length must be equals otp code length.
 
 class TextFieldPinController {
+  final int codeLength;
+
   List<FocusNode> focusNode = List();
   List<TextEditingController> textController = List();
+  List<OtpDefaultData> mListOtpData = List();
+  HashMap<int, String> mapResult = HashMap();
+  String smsCode = "";
+  int nextFocus = 1;
+  String result = "";
+
+  TextFieldPinController({
+    @required this.codeLength,
+  });
+
+  void setDefaultTextFieldData() {
+    for (int i = 0; i < codeLength; i++) {
+      mListOtpData.add(OtpDefaultData(null));
+      focusNode.add(FocusNode());
+      textController.add(TextEditingController());
+    }
+  }
 
   clear() {
     textController.forEach((element) {
       element.clear();
     });
 
-    focusNode[0].requestFocus();
+    setDefaultTextFieldData();
+  }
+
+  dispose() {
+    for (int i = 0; i < mListOtpData.length; i++) {
+      textController[i].dispose();
+    }
   }
 }
 
@@ -24,7 +49,6 @@ class TextFieldPin extends StatefulWidget {
   final double boxSize;
   final InputBorder borderStyle;
   final bool filled;
-  final int codeLength;
   final filledColor;
   final TextStyle textStyle;
   final double margin;
@@ -33,13 +57,12 @@ class TextFieldPin extends StatefulWidget {
 
   TextFieldPin({
     Key key,
-    this.controller,
+    @required this.controller,
     this.onOtpCallback,
     this.boxSize = 46,
     this.borderStyle,
     this.filled = false,
     this.filledColor = Colors.grey,
-    this.codeLength = 5,
     this.textStyle,
     this.margin = 16,
     this.borderStyeAfterTextChange,
@@ -55,20 +78,13 @@ class TextFieldPin extends StatefulWidget {
 class _TextFieldPinState extends State<TextFieldPin> {
   _TextFieldPinState();
 
-  List<OtpDefaultData> mListOtpData = List();
-  HashMap<int, String> mapResult = HashMap();
-
-  String _smsCode = "";
-  int _nextFocus = 1;
-  String _result = "";
   InputBorder _borderAfterTextChange;
 
   @override
   void dispose() {
     super.dispose();
-    for (int i = 0; i < mListOtpData.length; i++) {
-      widget.controller.textController[i].dispose();
-    }
+    widget.controller.dispose();
+
     SmsRetrieved.stopListening();
   }
 
@@ -76,7 +92,7 @@ class _TextFieldPinState extends State<TextFieldPin> {
   void initState() {
     super.initState();
 
-    _setDefaultTextFieldData();
+    widget.controller.setDefaultTextFieldData();
 
     _startListeningOtpCode();
     if (widget.borderStyeAfterTextChange == null) {
@@ -88,19 +104,11 @@ class _TextFieldPinState extends State<TextFieldPin> {
     }
   }
 
-  void _setDefaultTextFieldData() {
-    for (int i = 0; i < widget.codeLength; i++) {
-      mListOtpData.add(OtpDefaultData(null));
-      widget.controller.focusNode.add(new FocusNode());
-      widget.controller.textController.add(new TextEditingController());
-    }
-  }
-
   /// listen sms
   _startListeningOtpCode() async {
     String smsCode = await SmsRetrieved.startListeningSms();
 
-    _smsCode = getCode(smsCode);
+    widget.controller.smsCode = getCode(smsCode);
 
     setState(() {
       _autoFillCode();
@@ -112,16 +120,16 @@ class _TextFieldPinState extends State<TextFieldPin> {
   /// clear textController
   /// add listOtpData from smsCode value
   _autoFillCode() {
-    if (_smsCode != null) {
-      mListOtpData.clear();
+    if (widget.controller.smsCode != null) {
+      widget.controller.mListOtpData.clear();
       widget.controller.textController.clear();
       widget.controller.focusNode.clear();
-      List<String> arrCode = _smsCode.split("");
+      List<String> arrCode = widget.controller.smsCode.split("");
       for (int i = 0; i < arrCode.length; i++) {
-        mListOtpData.add(OtpDefaultData(arrCode[i]));
+        widget.controller.mListOtpData.add(OtpDefaultData(arrCode[i]));
         widget.controller.focusNode.add(new FocusNode());
-        widget.controller.textController
-            .add(new TextEditingController(text: mListOtpData[i].code));
+        widget.controller.textController.add(new TextEditingController(
+            text: widget.controller.mListOtpData[i].code));
 
         _otpNumberCallback(i, true);
       }
@@ -143,18 +151,20 @@ class _TextFieldPinState extends State<TextFieldPin> {
   /// check if value already in hashmap ? update value : insert value
   /// convert all values hasmap to string, set as result otp
   _otpNumberCallback(int i, bool isAutoFill) {
-    if (mapResult.containsKey(i)) {
-      mapResult.update(i, (e) => widget.controller.textController[i].text);
+    if (widget.controller.mapResult.containsKey(i)) {
+      widget.controller.mapResult
+          .update(i, (e) => widget.controller.textController[i].text);
     } else {
-      mapResult.putIfAbsent(i, () => widget.controller.textController[i].text);
+      widget.controller.mapResult
+          .putIfAbsent(i, () => widget.controller.textController[i].text);
     }
-    _result = mapResult.values
+    widget.controller.result = widget.controller.mapResult.values
         .toString()
         .replaceAll("(", "")
         .replaceAll(")", "")
         .replaceAll(",", "")
         .replaceAll(" ", "");
-    widget.onOtpCallback(_result, isAutoFill);
+    widget.onOtpCallback(widget.controller.result, isAutoFill);
   }
 
   @override
@@ -176,7 +186,7 @@ class _TextFieldPinState extends State<TextFieldPin> {
       width: MediaQuery.of(context).size.width,
       child: Center(
         child: ListView.builder(
-            itemCount: mListOtpData.length,
+            itemCount: widget.controller.mListOtpData.length,
             scrollDirection: Axis.horizontal,
             shrinkWrap: true,
             itemBuilder: (context, i) {
@@ -184,7 +194,9 @@ class _TextFieldPinState extends State<TextFieldPin> {
                 width: widget.boxSize,
                 height: widget.boxSize,
                 margin: EdgeInsets.only(
-                    right: i != mListOtpData.length - 1 ? widget.margin : 0),
+                    right: i != widget.controller.mListOtpData.length - 1
+                        ? widget.margin
+                        : 0),
                 child: Center(
                   child: textFieldFill(
                     focusNode: widget.controller.focusNode[i],
@@ -195,20 +207,22 @@ class _TextFieldPinState extends State<TextFieldPin> {
                       _otpNumberCallback(i, false);
 
                       if (value.toString().length > 0) {
-                        if (_nextFocus != mListOtpData.length) {
-                          _nextFocus = i + 1;
-                          FocusScope.of(context).requestFocus(
-                              widget.controller.focusNode[_nextFocus]);
+                        if (widget.controller.nextFocus !=
+                            widget.controller.mListOtpData.length) {
+                          widget.controller.nextFocus = i + 1;
+                          FocusScope.of(context).requestFocus(widget.controller
+                              .focusNode[widget.controller.nextFocus]);
                         } else {
-                          _nextFocus = (mListOtpData.length - 1) - 1;
+                          widget.controller.nextFocus =
+                              (widget.controller.mListOtpData.length - 1) - 1;
                         }
                       } else {
                         if (i >= 1) {
-                          _nextFocus = i - 1;
-                          FocusScope.of(context).requestFocus(
-                              widget.controller.focusNode[_nextFocus]);
+                          widget.controller.nextFocus = i - 1;
+                          FocusScope.of(context).requestFocus(widget.controller
+                              .focusNode[widget.controller.nextFocus]);
                         } else {
-                          _nextFocus = 1;
+                          widget.controller.nextFocus = 1;
                         }
                       }
                     },
